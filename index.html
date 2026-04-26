@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stream Player Mobile</title>
+    <title>Ultimate Music Player</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -43,7 +43,6 @@
             border-radius: 15px; padding: 20px; margin-bottom: 20px;
             line-height: 1.8; font-size: 15px; text-align: center;
         }
-        #kashi_area { color: var(--text-sub); }
 
         .controls-wrap { background: var(--card-bg); border-radius: 20px; padding: 15px 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); }
         .progress-area { width: 100%; margin-bottom: 10px; }
@@ -75,7 +74,7 @@
     </div>
 
     <div class="lyrics-wrap" id="scroll-area">
-        <div id="lyrics-display">歌詞を読み込み中...</div>
+        <div id="lyrics-display">データを読み込み中...</div>
     </div>
 
     <div class="controls-wrap">
@@ -104,58 +103,61 @@
     const playBtn = document.getElementById('play');
     const seekBar = document.getElementById('seek');
     
-    let songs = [
-        { file: "music/01 鬼ノ宴.mp3", key: "01 鬼ノ宴" },
-        { file: "music/02 #あくあ色ぱれっと.mp3", key: "02 #あくあ色ぱれっと" },
-        { file: "music/03 ビビデバ.mp3", key: "03 ビビデバ" }
-    ];
-
-    let lyricsData = {};
+    let lyricsData = {}; // JSONから取得する全データ
+    let songKeys = [];   // 曲名のリスト（JSONのキー）
     let currentIdx = 0;
     let isShuffle = false;
     let isRepeat = false;
     let shuffleQueue = [];
 
-    async function loadLyrics() {
+    // JSONデータの読み込み
+    async function init() {
         try {
             const response = await fetch('lyrics_data.json');
             lyricsData = await response.json();
-            loadSong(0);
+            songKeys = Object.keys(lyricsData); // JSONのキーを自動取得
+            
+            if (songKeys.length > 0) {
+                loadSong(0);
+            }
         } catch (e) {
-            document.getElementById('lyrics-display').innerText = "歌詞データの読み込みに失敗しました";
+            document.getElementById('lyrics-display').innerText = "lyrics_data.json の読み込みに失敗しました。";
         }
     }
 
     function loadSong(idx) {
-        const song = songs[idx];
-        const data = lyricsData[song.key];
+        const titleKey = songKeys[idx];
+        const data = lyricsData[titleKey];
         
-        document.getElementById('title').textContent = song.key;
-        document.getElementById('artist').textContent = (song.key === "02 #あくあ色ぱれっと") ? "湊あくあ" : (song.key === "01 鬼ノ宴" ? "友成空" : "星街すいせい");
+        document.getElementById('title').textContent = titleKey;
+        document.getElementById('artist').textContent = data.artist || "Unknown Artist";
         document.getElementById('cover').src = data.icon;
         document.getElementById('lyrics-display').innerHTML = data.text;
         
-        const filePath = song.file.split('/').map(p => encodeURIComponent(p)).join('/');
-        audio.src = filePath;
+        // 特殊文字 (# など) を考慮してエンコード
+        const encodedPath = data.file.split('/').map(p => encodeURIComponent(p)).join('/');
+        audio.src = encodedPath;
+        
         document.getElementById('scroll-area').scrollTop = 0;
     }
 
     function togglePlay() {
-        if (audio.paused) {
-            audio.play();
-            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        } else {
-            audio.pause();
-            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        if (audio.src) {
+            if (audio.paused) {
+                audio.play();
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                audio.pause();
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
         }
     }
 
-    // シャッフル用：残りの曲からランダムに1曲取り出す
+    // 重複しないシャッフル用のインデックス取得
     function getNextShuffleIdx() {
         if (shuffleQueue.length === 0) {
-            // 全曲一巡したので、現在の曲以外のインデックスを補充
-            shuffleQueue = songs.map((_, i) => i).filter(i => i !== currentIdx);
-            // フィッシャー–イェーツのシャッフル
+            // 現在の曲以外のインデックスをリスト化してシャッフル
+            shuffleQueue = songKeys.map((_, i) => i).filter(i => i !== currentIdx);
             for (let i = shuffleQueue.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffleQueue[i], shuffleQueue[j]] = [shuffleQueue[j], shuffleQueue[i]];
@@ -174,7 +176,7 @@
         if (isShuffle) {
             currentIdx = getNextShuffleIdx();
         } else {
-            currentIdx = (currentIdx + 1) % songs.length;
+            currentIdx = (currentIdx + 1) % songKeys.length;
         }
         loadSong(currentIdx);
         audio.play();
@@ -188,7 +190,7 @@
             return;
         }
 
-        currentIdx = (currentIdx - 1 + songs.length) % songs.length;
+        currentIdx = (currentIdx - 1 + songKeys.length) % songKeys.length;
         loadSong(currentIdx);
         audio.play();
         playBtn.innerHTML = '<i class="fas fa-pause"></i>';
@@ -197,7 +199,7 @@
     function toggleShuffle() {
         isShuffle = !isShuffle;
         document.getElementById('shuffle').classList.toggle('active', isShuffle);
-        if (isShuffle) shuffleQueue = []; // キューをリセットして新しく作り直す
+        if (isShuffle) shuffleQueue = [];
     }
 
     function toggleRepeat() {
@@ -205,6 +207,7 @@
         document.getElementById('repeat').classList.toggle('active', isRepeat);
     }
 
+    // 再生時間の更新
     audio.ontimeupdate = () => {
         const p = (audio.currentTime / audio.duration) * 100;
         seekBar.value = p || 0;
@@ -233,7 +236,8 @@
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
-    loadLyrics();
+    // 初期化実行
+    init();
 </script>
 
 </body>
