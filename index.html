@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Music Player</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --surface-color: #181818;
+            --primary-color: #ffffff;
+            --secondary-color: #a7a7a7;
+            --accent-color: #1db954;
+            --scroll-thumb: #333;
+        }
+
+        body {
+            margin: 0; background-color: var(--bg-color); color: var(--primary-color);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+
+        .player-container {
+            background-color: var(--surface-color); padding: 30px; border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); width: 380px; text-align: center;
+        }
+
+        .cover-art {
+            width: 100%; aspect-ratio: 1/1; background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
+            background-size: cover; background-position: center; border-radius: 12px;
+            margin-bottom: 24px; display: flex; justify-content: center; align-items: center;
+            font-size: 64px; color: #333; transition: background-image 0.5s ease;
+        }
+
+        .track-info h2 { margin: 0; font-size: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .track-info p { margin: 8px 0 20px; color: var(--secondary-color); font-size: 15px; }
+
+        .progress-bar { -webkit-appearance: none; width: 100%; height: 5px; background: #4d4d4d; border-radius: 3px; cursor: pointer; outline: none; }
+        .progress-bar::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--primary-color); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+        .time-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--secondary-color); margin: 8px 0 24px; }
+
+        .controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px; }
+        .btn { background: none; border: none; color: var(--primary-color); font-size: 24px; cursor: pointer; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn.play-pause { width: 56px; height: 56px; background: #fff; color: #000; border-radius: 50%; font-size: 20px; }
+        
+        .btn.active { color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); }
+
+        .lyrics-section {
+            height: 200px; overflow-y: auto; text-align: left; font-size: 14px;
+            line-height: 1.8; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 8px;
+            scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent;
+        }
+
+        .lyrics-section::-webkit-scrollbar { width: 6px; }
+        .lyrics-section::-webkit-scrollbar-track { background: transparent; }
+        .lyrics-section::-webkit-scrollbar-thumb { background-color: var(--scroll-thumb); border-radius: 10px; }
+
+        #kashi_area { color: var(--primary-color); }
+        .loading { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="player-container">
+    <div class="cover-art" id="cover-art">♪</div>
+    <div class="track-info">
+        <h2 id="track-title">No Track</h2>
+        <p id="track-artist">Select Music</p>
+    </div>
+
+    <input type="range" id="progress-bar" class="progress-bar" value="0" step="0.1">
+    <div class="time-info">
+        <span id="current-time">0:00</span>
+        <span id="duration">0:00</span>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="shuffle-btn" onclick="toggleShuffle()" title="シャッフル">🔀</button>
+        <button class="btn" onclick="prevSong()">⏮</button>
+        <button class="btn play-pause" id="play-btn" onclick="togglePlay()">▶</button>
+        <button class="btn" onclick="nextSong()">⏭</button>
+    </div>
+
+    <div class="lyrics-section" id="lyrics-display">再生ボタンを押してください。</div>
+</div>
+
+<audio id="audio-player"></audio>
+
+<script>
+    const songs = [
+        { file: "music/01 鬼ノ宴.mp3", title: "01 鬼ノ宴" },
+        { file: "music/02 #あくあ色ぱれっと.mp3", title: "02 #あくあ色ぱれっと" },
+        { file: "music/03 ビビデバ.mp3", title: "03 ビビデバ" }
+    ];
+
+    let lyricsMaster = {};
+    const audio = document.getElementById('audio-player');
+    const lyricsDisplay = document.getElementById('lyrics-display');
+    const coverArt = document.getElementById('cover-art');
+    const progressBar = document.getElementById('progress-bar');
+    const currentTimeEl = document.getElementById('current-time');
+    const durationEl = document.getElementById('duration');
+    const shuffleBtn = document.getElementById('shuffle-btn');
+
+    let currentIdx = 0;
+    let isPlaying = false;
+    let isSeeking = false;
+    let isShuffle = false;
+    let shuffleQueue = [];
+
+    async function init() {
+        try {
+            const response = await fetch('lyrics_data.json');
+            lyricsMaster = await response.json();
+        } catch (e) {
+            lyricsDisplay.innerHTML = "lyrics_data.json の読み込みに失敗しました。";
+        }
+        loadSong(0);
+    }
+
+    function loadSong(idx) {
+        const song = songs[idx];
+        if (!song) return;
+        
+        currentIdx = idx;
+        document.getElementById('track-title').textContent = song.title;
+        audio.src = song.file;
+
+        const localData = lyricsMaster[song.title];
+        if (localData) {
+            lyricsDisplay.innerHTML = localData.text || '歌詞データがありません。';
+            document.getElementById('track-artist').textContent = 'Local Database';
+            if (localData.icon) {
+                coverArt.style.backgroundImage = `url('${localData.icon}')`;
+                coverArt.textContent = '';
+            } else {
+                coverArt.style.backgroundImage = 'none';
+                coverArt.textContent = '♪';
+            }
+        }
+        lyricsDisplay.scrollTop = 0;
+    }
+
+    function togglePlay() {
+        if (isPlaying) { 
+            audio.pause(); 
+            document.getElementById('play-btn').textContent = '▶'; 
+        } else { 
+            audio.play(); 
+            document.getElementById('play-btn').textContent = '⏸'; 
+        }
+        isPlaying = !isPlaying;
+    }
+
+    function toggleShuffle() {
+        isShuffle = !isShuffle;
+        shuffleBtn.classList.toggle('active', isShuffle);
+        if (isShuffle) generateShuffleQueue();
+    }
+
+    function generateShuffleQueue() {
+        shuffleQueue = songs.map((_, i) => i).filter(i => i !== currentIdx);
+        for (let i = shuffleQueue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffleQueue[i], shuffleQueue[j]] = [shuffleQueue[j], shuffleQueue[i]];
+        }
+    }
+
+    function nextSong() {
+        let nextIdx;
+        if (isShuffle) {
+            if (shuffleQueue.length === 0) generateShuffleQueue();
+            nextIdx = shuffleQueue.shift();
+        } else {
+            nextIdx = (currentIdx + 1) % songs.length;
+        }
+        loadSong(nextIdx);
+        if(isPlaying) audio.play();
+    }
+
+    function prevSong() {
+        let prevIdx = (currentIdx - 1 + songs.length) % songs.length;
+        loadSong(prevIdx);
+        if(isPlaying) audio.play();
+    }
+
+    audio.onended = () => { nextSong(); };
+
+    audio.ontimeupdate = () => {
+        if (!isSeeking) {
+            progressBar.max = audio.duration || 0;
+            progressBar.value = audio.currentTime;
+            currentTimeEl.textContent = formatTime(audio.currentTime);
+            durationEl.textContent = formatTime(audio.duration);
+        }
+    };
+
+    progressBar.oninput = () => {
+        isSeeking = true;
+        currentTimeEl.textContent = formatTime(progressBar.value);
+    };
+
+    progressBar.onchange = () => {
+        audio.currentTime = progressBar.value;
+        isSeeking = false;
+    };
+
+    function formatTime(s) {
+        if (isNaN(s)) return "0:00";
+        const m = Math.floor(s / 60);
+        const sc = Math.floor(s % 60);
+        return `${m}:${sc < 10 ? '0' : ''}${sc}`;
+    }
+
+    init();
+</script>
+
+</body>
+</html>
