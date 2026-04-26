@@ -26,48 +26,39 @@
             padding: 20px; background: linear-gradient(180deg, #2a2a2a 0%, #121212 100%);
         }
 
-        /* ジャケットエリア */
         .header { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
         .cover-box {
-            width: 60vw; height: 60vw; max-width: 250px; max-height: 250px;
+            width: 60vw; height: 60vw; max-width: 230px; max-height: 230px;
             border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);
         }
         .cover-box img { width: 100%; height: 100%; object-fit: cover; }
 
         .info { text-align: center; width: 100%; margin-bottom: 15px; }
-        .info h1 { font-size: 20px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info h1 { font-size: 18px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .info p { font-size: 14px; color: var(--accent); margin: 5px 0 0; }
 
-        /* 歌詞エリア - 手動スクロール */
         .lyrics-wrap {
             flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2);
             border-radius: 15px; padding: 20px; margin-bottom: 20px;
             line-height: 1.8; font-size: 15px; text-align: center;
-            scrollbar-width: none;
         }
-        .lyrics-wrap::-webkit-scrollbar { display: none; }
-        #lyrics-display { color: var(--text-sub); }
+        #kashi_area { color: var(--text-sub); }
 
-        /* コントロール */
         .controls-wrap { background: var(--card-bg); border-radius: 20px; padding: 15px 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); }
-        
         .progress-area { width: 100%; margin-bottom: 10px; }
         .seek-bar {
             width: 100%; height: 5px; appearance: none; background: #444;
             border-radius: 5px; outline: none; cursor: pointer;
         }
-        .seek-bar::-webkit-slider-thumb {
-            appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%;
-        }
+        .seek-bar::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; }
 
         .time-box { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sub); margin-top: 5px; }
 
-        .btns { display: flex; justify-content: space-between; align-items: center; padding: 10px 10px 5px; }
-        .btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
-        .btn-main { width: 65px; height: 65px; background: #fff; color: #000; border-radius: 50%; font-size: 24px; }
+        .btns { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; }
+        .btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; transition: 0.2s; }
+        .btn-main { width: 60px; height: 60px; background: #fff; color: #000; border-radius: 50%; font-size: 24px; }
         .active { color: var(--accent); }
-
     </style>
 </head>
 <body>
@@ -78,13 +69,13 @@
             <img id="cover" src="" alt="jacket">
         </div>
         <div class="info">
-            <h1 id="title">Music Player</h1>
-            <p id="artist">Ready to Stream</p>
+            <h1 id="title">Loading...</h1>
+            <p id="artist">---</p>
         </div>
     </div>
 
     <div class="lyrics-wrap" id="scroll-area">
-        <div id="lyrics-display"></div>
+        <div id="lyrics-display">歌詞を読み込み中...</div>
     </div>
 
     <div class="controls-wrap">
@@ -101,7 +92,7 @@
             <button class="btn" onclick="prevSong()"><i class="fas fa-step-backward"></i></button>
             <button class="btn btn-main" id="play" onclick="togglePlay()"><i class="fas fa-play"></i></button>
             <button class="btn" onclick="nextSong()"><i class="fas fa-step-forward"></i></button>
-            <button class="btn" id="repeat" onclick="toggleRepeat()"><i class="fas fa-redo"></i></button>
+            <button class="btn" id="repeat" onclick="toggleRepeat()"><i class="fas fa-redo-alt"></i></button>
         </div>
     </div>
 </div>
@@ -109,48 +100,40 @@
 <audio id="audio"></audio>
 
 <script>
-    const lyricsData = {
-        "01 鬼ノ宴": {
-            "title": "01 鬼ノ宴",
-            "artist": "友成空",
-            "icon": "https://i.ytimg.com/vi/NFzyrPK9rtM/sddefault.jpg",
-            "html": "何処から喰へば良いものか<br>美味いものか不味いものか<br>さっぱり俺にゃ分からない<br>決まりばかりの世の中じゃ<br><br>仏が何時も水を差す<br>我慢するのが礼儀でしょう？<br>鬼がこの身を唆す<br>御先にどうぞ遠慮なく<br><br>あゝかっぴらけや其御口<br>宴、宴が始月曜<br>勿体無ぇや　一度切り<br>好きなもの丈　食べなはれ"
-        },
-        "02 #あくあ色ぱれっと": {
-            "title": "02 #あくあ色ぱれっと",
-            "artist": "湊あくあ",
-            "icon": "https://www.uta-net.com/libs/cacheimg.php?p=kashi&f=320000/324360.jpg",
-            "html": "何をしても不器用で何かとミスしてばっか<br>ダメダメな私だって　できる事があるの<br>凹んで悲しくたって笑顔にしてあげるんだ<br>ここにいるから　早く　私を見つけてね<br><br>描く夢の未来へ続く<br>道をキミと歩けますように<br><br>ねぇもっと！<br>好きになってもらいたいの！　頭の中は君ばっか！！<br>ずっとずっと好きがいいの　心の奥もトキメイちゃうくらいに<br>こっち向いててよね　ねえダーリン？　あぁもう離さないから、絶対に！"
-        },
-        "03 ビビデバ": {
-            "title": "03 ビビデバ",
-            "artist": "星街すいせい",
-            "icon": "https://www.uta-net.com/libs/cacheimg.php?p=kashi&f=360000/352085.jpg",
-            "html": "つまらないデイズもう散々ね！<br>奇蹟願っているだけの人生<br>秒針は音を立てて夜を急かす魔物のよう<br>人生は一瞬にして溶ける魔法<br>おしゃまな馬車　飛び乗ってDRIVIN'<br>あたしは大変身メイクアップ！<br>BIBBIDI BOBBIDI BOOWA"
-        }
-    };
-
-    const songs = [
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('play');
+    const seekBar = document.getElementById('seek');
+    
+    let songs = [
         { file: "music/01 鬼ノ宴.mp3", key: "01 鬼ノ宴" },
         { file: "music/02 #あくあ色ぱれっと.mp3", key: "02 #あくあ色ぱれっと" },
         { file: "music/03 ビビデバ.mp3", key: "03 ビビデバ" }
     ];
 
-    const audio = document.getElementById('audio');
-    const playBtn = document.getElementById('play');
-    const seekBar = document.getElementById('seek');
+    let lyricsData = {};
     let currentIdx = 0;
     let isShuffle = false;
     let isRepeat = false;
+
+    // JSONファイルを読み込む
+    async function loadLyrics() {
+        try {
+            const response = await fetch('lyrics_data.json');
+            lyricsData = await response.json();
+            loadSong(0); // 最初の曲をセット
+        } catch (e) {
+            document.getElementById('lyrics-display').innerText = "歌詞データの読み込みに失敗しました";
+        }
+    }
 
     function loadSong(idx) {
         const song = songs[idx];
         const data = lyricsData[song.key];
         
-        document.getElementById('title').textContent = data.title;
-        document.getElementById('artist').textContent = data.artist;
+        document.getElementById('title').textContent = song.key;
+        document.getElementById('artist').textContent = (song.key === "02 #あくあ色ぱれっと") ? "湊あくあ" : (song.key === "01 鬼ノ宴" ? "友成空" : "星街すいせい");
         document.getElementById('cover').src = data.icon;
-        document.getElementById('lyrics-display').innerHTML = data.html;
+        document.getElementById('lyrics-display').innerHTML = data.text;
         
         // 特殊文字対策のエンコード
         const filePath = song.file.split('/').map(p => encodeURIComponent(p)).join('/');
@@ -170,6 +153,13 @@
     }
 
     function nextSong() {
+        // リピート設定中の挙動：同じ曲を最初から再生
+        if (isRepeat) {
+            audio.currentTime = 0;
+            audio.play();
+            return;
+        }
+
         if (isShuffle) {
             currentIdx = Math.floor(Math.random() * songs.length);
         } else {
@@ -181,6 +171,13 @@
     }
 
     function prevSong() {
+        // リピート設定中の挙動：同じ曲を最初から再生
+        if (isRepeat) {
+            audio.currentTime = 0;
+            audio.play();
+            return;
+        }
+
         currentIdx = (currentIdx - 1 + songs.length) % songs.length;
         loadSong(currentIdx);
         audio.play();
@@ -195,7 +192,7 @@
     function toggleRepeat() {
         isRepeat = !isRepeat;
         document.getElementById('repeat').classList.toggle('active', isRepeat);
-        audio.loop = isRepeat;
+        // HTML5標準のループ属性はあえて使わず、nextSong/prevSong側で制御します
     }
 
     audio.ontimeupdate = () => {
@@ -210,7 +207,15 @@
         audio.currentTime = time;
     };
 
-    audio.onended = () => { if(!isRepeat) nextSong(); };
+    // 曲が最後まで終わった時の処理
+    audio.onended = () => {
+        if (isRepeat) {
+            audio.currentTime = 0;
+            audio.play();
+        } else {
+            nextSong();
+        }
+    };
 
     function formatTime(s) {
         if (isNaN(s)) return "0:00";
@@ -219,7 +224,8 @@
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
-    loadSong(0);
+    // 起動時に歌詞データを読み込む
+    loadLyrics();
 </script>
 
 </body>
