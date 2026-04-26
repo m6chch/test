@@ -114,13 +114,13 @@
     let currentIdx = 0;
     let isShuffle = false;
     let isRepeat = false;
+    let shuffleQueue = [];
 
-    // JSONファイルを読み込む
     async function loadLyrics() {
         try {
             const response = await fetch('lyrics_data.json');
             lyricsData = await response.json();
-            loadSong(0); // 最初の曲をセット
+            loadSong(0);
         } catch (e) {
             document.getElementById('lyrics-display').innerText = "歌詞データの読み込みに失敗しました";
         }
@@ -135,10 +135,8 @@
         document.getElementById('cover').src = data.icon;
         document.getElementById('lyrics-display').innerHTML = data.text;
         
-        // 特殊文字対策のエンコード
         const filePath = song.file.split('/').map(p => encodeURIComponent(p)).join('/');
         audio.src = filePath;
-        
         document.getElementById('scroll-area').scrollTop = 0;
     }
 
@@ -152,8 +150,21 @@
         }
     }
 
+    // シャッフル用：残りの曲からランダムに1曲取り出す
+    function getNextShuffleIdx() {
+        if (shuffleQueue.length === 0) {
+            // 全曲一巡したので、現在の曲以外のインデックスを補充
+            shuffleQueue = songs.map((_, i) => i).filter(i => i !== currentIdx);
+            // フィッシャー–イェーツのシャッフル
+            for (let i = shuffleQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffleQueue[i], shuffleQueue[j]] = [shuffleQueue[j], shuffleQueue[i]];
+            }
+        }
+        return shuffleQueue.shift();
+    }
+
     function nextSong() {
-        // リピート設定中の挙動：同じ曲を最初から再生
         if (isRepeat) {
             audio.currentTime = 0;
             audio.play();
@@ -161,7 +172,7 @@
         }
 
         if (isShuffle) {
-            currentIdx = Math.floor(Math.random() * songs.length);
+            currentIdx = getNextShuffleIdx();
         } else {
             currentIdx = (currentIdx + 1) % songs.length;
         }
@@ -171,7 +182,6 @@
     }
 
     function prevSong() {
-        // リピート設定中の挙動：同じ曲を最初から再生
         if (isRepeat) {
             audio.currentTime = 0;
             audio.play();
@@ -187,12 +197,12 @@
     function toggleShuffle() {
         isShuffle = !isShuffle;
         document.getElementById('shuffle').classList.toggle('active', isShuffle);
+        if (isShuffle) shuffleQueue = []; // キューをリセットして新しく作り直す
     }
 
     function toggleRepeat() {
         isRepeat = !isRepeat;
         document.getElementById('repeat').classList.toggle('active', isRepeat);
-        // HTML5標準のループ属性はあえて使わず、nextSong/prevSong側で制御します
     }
 
     audio.ontimeupdate = () => {
@@ -207,7 +217,6 @@
         audio.currentTime = time;
     };
 
-    // 曲が最後まで終わった時の処理
     audio.onended = () => {
         if (isRepeat) {
             audio.currentTime = 0;
@@ -224,7 +233,6 @@
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
-    // 起動時に歌詞データを読み込む
     loadLyrics();
 </script>
 
