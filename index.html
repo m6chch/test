@@ -2,115 +2,106 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ULTIMATE MUSIC PLAYER</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stream Player Mobile</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --accent-color: #00d2ff;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #ff4e91;
             --text-main: #ffffff;
             --text-sub: #b3b3b3;
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
-            background: var(--bg-gradient); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main);
-            overflow: hidden;
+            margin: 0; background-color: var(--bg-color); color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; height: 100vh; overflow: hidden;
         }
 
-        .player-card {
-            width: 900px; height: 600px; background: var(--glass-bg); backdrop-filter: blur(20px);
-            border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); display: flex;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden;
-            animation: fadeIn 1s ease-out;
+        .player-container {
+            width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column;
+            padding: 20px; background: linear-gradient(180deg, #2a2a2a 0%, #121212 100%);
         }
 
-        /* 左側：ジャケット・コントロール */
-        .player-left {
-            flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center;
-            background: rgba(0,0,0,0.2);
+        /* ジャケットエリア */
+        .header { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
+        .cover-box {
+            width: 60vw; height: 60vw; max-width: 250px; max-height: 250px;
+            border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);
         }
+        .cover-box img { width: 100%; height: 100%; object-fit: cover; }
 
-        .cover-area {
-            width: 280px; height: 280px; border-radius: 20px; position: relative;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5); margin-bottom: 30px;
-            overflow: hidden; transition: transform 0.3s ease;
+        .info { text-align: center; width: 100%; margin-bottom: 15px; }
+        .info h1 { font-size: 20px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info p { font-size: 14px; color: var(--accent); margin: 5px 0 0; }
+
+        /* 歌詞エリア - 手動スクロール */
+        .lyrics-wrap {
+            flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2);
+            border-radius: 15px; padding: 20px; margin-bottom: 20px;
+            line-height: 1.8; font-size: 15px; text-align: center;
+            scrollbar-width: none;
         }
-        .cover-area.playing { animation: pulse 2s infinite ease-in-out; }
-        .cover-image { width: 100%; height: 100%; object-fit: cover; }
+        .lyrics-wrap::-webkit-scrollbar { display: none; }
+        #lyrics-display { color: var(--text-sub); }
 
-        .info-area { text-align: center; margin-bottom: 20px; width: 100%; }
-        .info-area h1 { font-size: 24px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .info-area p { color: var(--accent-color); margin: 5px 0; font-weight: bold; }
-
-        /* 右側：歌詞エリア */
-        .player-right { flex: 1.2; padding: 40px; display: flex; flex-direction: column; }
-        .lyrics-container {
-            flex: 1; overflow-y: auto; padding-right: 15px; scroll-behavior: smooth;
-            mask-image: linear-gradient(transparent, black 10%, black 90%, transparent);
-        }
-        .lyrics-container::-webkit-scrollbar { width: 4px; }
-        .lyrics-container::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+        /* コントロール */
+        .controls-wrap { background: var(--card-bg); border-radius: 20px; padding: 15px 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); }
         
-        .lyrics-content { font-size: 18px; line-height: 2; color: var(--text-sub); transition: 0.3s; }
-        .lyrics-line.active { color: #fff; font-size: 20px; font-weight: bold; text-shadow: 0 0 15px var(--accent-color); }
-
-        /* コントロール UI */
-        .progress-container { width: 100%; margin-bottom: 20px; }
-        .progress-bar {
-            width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px;
-            cursor: pointer; position: relative; appearance: none; outline: none;
+        .progress-area { width: 100%; margin-bottom: 10px; }
+        .seek-bar {
+            width: 100%; height: 5px; appearance: none; background: #444;
+            border-radius: 5px; outline: none; cursor: pointer;
         }
-        .progress-bar::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: var(--accent-color); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--accent-color); }
+        .seek-bar::-webkit-slider-thumb {
+            appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%;
+        }
 
-        .time-display { display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px; }
+        .time-box { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sub); margin-top: 5px; }
 
-        .main-controls { display: flex; align-items: center; gap: 25px; }
-        .btn { background: none; border: none; color: #fff; cursor: pointer; font-size: 20px; transition: 0.3s; }
-        .btn:hover { color: var(--accent-color); transform: scale(1.1); }
-        .btn.play-pause { width: 60px; height: 60px; background: var(--accent-color); border-radius: 50%; font-size: 24px; color: #000; }
-        .btn.active { color: var(--accent-color); }
+        .btns { display: flex; justify-content: space-between; align-items: center; padding: 10px 10px 5px; }
+        .btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+        .btn-main { width: 65px; height: 65px; background: #fff; color: #000; border-radius: 50%; font-size: 24px; }
+        .active { color: var(--accent); }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
     </style>
 </head>
 <body>
 
-<div class="player-card">
-    <div class="player-left">
-        <div class="cover-area" id="cover-box">
-            <img id="cover-art" src="" alt="Jacket" class="cover-image">
+<div class="player-container">
+    <div class="header">
+        <div class="cover-box">
+            <img id="cover" src="" alt="jacket">
         </div>
-        <div class="info-area">
+        <div class="info">
             <h1 id="title">Music Player</h1>
-            <p id="artist">Ready to Play</p>
+            <p id="artist">Ready to Stream</p>
         </div>
-        
-        <div class="progress-container">
-            <input type="range" id="progress" class="progress-bar" value="0">
-            <div class="time-display">
+    </div>
+
+    <div class="lyrics-wrap" id="scroll-area">
+        <div id="lyrics-display"></div>
+    </div>
+
+    <div class="controls-wrap">
+        <div class="progress-area">
+            <input type="range" id="seek" class="seek-bar" value="0">
+            <div class="time-box">
                 <span id="current">0:00</span>
                 <span id="total">0:00</span>
             </div>
         </div>
 
-        <div class="main-controls">
-            <button class="btn" id="shuffle" title="Shuffle"><i class="fas fa-random"></i></button>
+        <div class="btns">
+            <button class="btn" id="shuffle" onclick="toggleShuffle()"><i class="fas fa-random"></i></button>
             <button class="btn" onclick="prevSong()"><i class="fas fa-step-backward"></i></button>
-            <button class="btn play-pause" id="play-btn" onclick="togglePlay()"><i class="fas fa-play"></i></button>
+            <button class="btn btn-main" id="play" onclick="togglePlay()"><i class="fas fa-play"></i></button>
             <button class="btn" onclick="nextSong()"><i class="fas fa-step-forward"></i></button>
-            <button class="btn" id="repeat" title="Repeat"><i class="fas fa-redo"></i></button>
-        </div>
-    </div>
-
-    <div class="player-right">
-        <h3>Lyrics</h3>
-        <div class="lyrics-container" id="lyrics-scroll">
-            <div class="lyrics-content" id="lyrics-display">再生を開始してください</div>
+            <button class="btn" id="repeat" onclick="toggleRepeat()"><i class="fas fa-redo"></i></button>
         </div>
     </div>
 </div>
@@ -118,108 +109,116 @@
 <audio id="audio"></audio>
 
 <script>
-    // GitHub環境用に、すべてのデータをこの中で定義
-    const songs = [
-        { 
-            file: "music/01 鬼ノ宴.mp3", 
-            title: "01 鬼ノ宴", 
-            artist: "友成空",
-            cover: "https://i.ytimg.com/vi/NFzyrPK9rtM/sddefault.jpg",
-            lyrics: "何処から喰へば良いものか<br>美味いものか不味いものか<br>其処退け此処退け鬼が通る<br>さあさあ、鬼ノ宴の始まりだ"
+    const lyricsData = {
+        "01 鬼ノ宴": {
+            "title": "01 鬼ノ宴",
+            "artist": "友成空",
+            "icon": "https://i.ytimg.com/vi/NFzyrPK9rtM/sddefault.jpg",
+            "html": "何処から喰へば良いものか<br>美味いものか不味いものか<br>さっぱり俺にゃ分からない<br>決まりばかりの世の中じゃ<br><br>仏が何時も水を差す<br>我慢するのが礼儀でしょう？<br>鬼がこの身を唆す<br>御先にどうぞ遠慮なく<br><br>あゝかっぴらけや其御口<br>宴、宴が始月曜<br>勿体無ぇや　一度切り<br>好きなもの丈　食べなはれ"
         },
-        { 
-            file: "music/02 #あくあ色ぱれっと.mp3", 
-            title: "02 #あくあ色ぱれっと", 
-            artist: "湊あくあ",
-            cover: "https://i.ytimg.com/vi/uY_mZInZiaU/hqdefault.jpg",
-            lyrics: "何をしても不器用で何かとミスしてばっか<br>それでも君は笑って「大丈夫だよ」って言ってくれたね<br>描いていくよ、あくあ色ぱれっと<br>君との思い出を一つずつ"
+        "02 #あくあ色ぱれっと": {
+            "title": "02 #あくあ色ぱれっと",
+            "artist": "湊あくあ",
+            "icon": "https://www.uta-net.com/libs/cacheimg.php?p=kashi&f=320000/324360.jpg",
+            "html": "何をしても不器用で何かとミスしてばっか<br>ダメダメな私だって　できる事があるの<br>凹んで悲しくたって笑顔にしてあげるんだ<br>ここにいるから　早く　私を見つけてね<br><br>描く夢の未来へ続く<br>道をキミと歩けますように<br><br>ねぇもっと！<br>好きになってもらいたいの！　頭の中は君ばっか！！<br>ずっとずっと好きがいいの　心の奥もトキメイちゃうくらいに<br>こっち向いててよね　ねえダーリン？　あぁもう離さないから、絶対に！"
         },
-        { 
-            file: "music/03 ビビデバ.mp3", 
-            title: "03 ビビデバ", 
-            artist: "星街すいせい",
-            cover: "https://i.ytimg.com/vi/8ZP5eqm4JqM/hqdefault.jpg",
-            lyrics: "つまらないデイズもう散々ね！<br>人生は一瞬にして溶ける魔法<br>おしゃまな馬車 飛び乗ってDRIVIN'<br>BIBBIDI BOBBIDI BOOWA"
+        "03 ビビデバ": {
+            "title": "03 ビビデバ",
+            "artist": "星街すいせい",
+            "icon": "https://www.uta-net.com/libs/cacheimg.php?p=kashi&f=360000/352085.jpg",
+            "html": "つまらないデイズもう散々ね！<br>奇蹟願っているだけの人生<br>秒針は音を立てて夜を急かす魔物のよう<br>人生は一瞬にして溶ける魔法<br>おしゃまな馬車　飛び乗ってDRIVIN'<br>あたしは大変身メイクアップ！<br>BIBBIDI BOBBIDI BOOWA"
         }
+    };
+
+    const songs = [
+        { file: "music/01 鬼ノ宴.mp3", key: "01 鬼ノ宴" },
+        { file: "music/02 #あくあ色ぱれっと.mp3", key: "02 #あくあ色ぱれっと" },
+        { file: "music/03 ビビデバ.mp3", key: "03 ビビデバ" }
     ];
 
     const audio = document.getElementById('audio');
-    const playBtn = document.getElementById('play-btn');
-    const progress = document.getElementById('progress');
-    const lyricsDisplay = document.getElementById('lyrics-display');
-    const coverArt = document.getElementById('cover-art');
-    const coverBox = document.getElementById('cover-box');
-
+    const playBtn = document.getElementById('play');
+    const seekBar = document.getElementById('seek');
     let currentIdx = 0;
-    let isPlaying = false;
+    let isShuffle = false;
+    let isRepeat = false;
 
     function loadSong(idx) {
         const song = songs[idx];
-        document.getElementById('title').textContent = song.title;
-        document.getElementById('artist').textContent = song.artist;
-        coverArt.src = song.cover;
+        const data = lyricsData[song.key];
         
-        // 【重要】# などの記号を安全に読み込むためのエンコード
-        const encodedFile = song.file.split('/').map(part => encodeURIComponent(part)).join('/');
-        audio.src = encodedFile;
-
-        // 歌詞の構築
-        lyricsDisplay.innerHTML = song.lyrics.split('<br>').map(line => `<div class="lyrics-line">${line}</div>`).join('');
+        document.getElementById('title').textContent = data.title;
+        document.getElementById('artist').textContent = data.artist;
+        document.getElementById('cover').src = data.icon;
+        document.getElementById('lyrics-display').innerHTML = data.html;
         
-        if (isPlaying) audio.play();
+        // 特殊文字対策のエンコード
+        const filePath = song.file.split('/').map(p => encodeURIComponent(p)).join('/');
+        audio.src = filePath;
+        
+        document.getElementById('scroll-area').scrollTop = 0;
     }
 
     function togglePlay() {
         if (audio.paused) {
             audio.play();
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            coverBox.classList.add('playing');
         } else {
             audio.pause();
             playBtn.innerHTML = '<i class="fas fa-play"></i>';
-            coverBox.classList.remove('playing');
         }
     }
 
     function nextSong() {
-        currentIdx = (currentIdx + 1) % songs.length;
+        if (isShuffle) {
+            currentIdx = Math.floor(Math.random() * songs.length);
+        } else {
+            currentIdx = (currentIdx + 1) % songs.length;
+        }
         loadSong(currentIdx);
         audio.play();
+        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
     }
 
     function prevSong() {
         currentIdx = (currentIdx - 1 + songs.length) % songs.length;
         loadSong(currentIdx);
         audio.play();
+        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    }
+
+    function toggleShuffle() {
+        isShuffle = !isShuffle;
+        document.getElementById('shuffle').classList.toggle('active', isShuffle);
+    }
+
+    function toggleRepeat() {
+        isRepeat = !isRepeat;
+        document.getElementById('repeat').classList.toggle('active', isRepeat);
+        audio.loop = isRepeat;
     }
 
     audio.ontimeupdate = () => {
         const p = (audio.currentTime / audio.duration) * 100;
-        progress.value = p || 0;
+        seekBar.value = p || 0;
         document.getElementById('current').textContent = formatTime(audio.currentTime);
         document.getElementById('total').textContent = formatTime(audio.duration);
-
-        // 簡易歌詞ハイライト
-        const lines = document.querySelectorAll('.lyrics-line');
-        const activeLineIdx = Math.floor((audio.currentTime / audio.duration) * lines.length);
-        lines.forEach((l, i) => {
-            l.classList.toggle('active', i === activeLineIdx);
-            if(i === activeLineIdx) l.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
     };
 
-    progress.oninput = () => {
-        const time = (progress.value / 100) * audio.duration;
+    seekBar.oninput = () => {
+        const time = (seekBar.value / 100) * audio.duration;
         audio.currentTime = time;
     };
 
-    function formatTime(sec) {
-        const m = Math.floor(sec / 60);
-        const s = Math.floor(sec % 60);
-        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    audio.onended = () => { if(!isRepeat) nextSong(); };
+
+    function formatTime(s) {
+        if (isNaN(s)) return "0:00";
+        const m = Math.floor(s / 60);
+        const sc = Math.floor(s % 60);
+        return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
-    // 初回読み込み
     loadSong(0);
 </script>
 
