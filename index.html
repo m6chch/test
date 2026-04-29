@@ -128,9 +128,10 @@
     function loadSong(idx) {
         const titleKey = songKeys[idx];
         const data = lyricsData[titleKey];
+        const artistName = data.artist || "Unknown Artist";
         
         document.getElementById('title').textContent = titleKey;
-        document.getElementById('artist').textContent = data.artist || "Unknown Artist";
+        document.getElementById('artist').textContent = artistName;
         document.getElementById('cover').src = data.icon;
         document.getElementById('lyrics-display').innerHTML = data.text;
         
@@ -139,6 +140,23 @@
         audio.src = encodedPath;
         
         document.getElementById('scroll-area').scrollTop = 0;
+
+        // --- Media Session API (ロック画面や通知領域への表示) ---
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: titleKey,
+                artist: artistName,
+                album: 'Ultimate Music Player',
+                artwork: [
+                    { src: data.icon, sizes: '96x96', type: 'image/jpeg' },
+                    { src: data.icon, sizes: '128x128', type: 'image/jpeg' },
+                    { src: data.icon, sizes: '192x192', type: 'image/jpeg' },
+                    { src: data.icon, sizes: '256x256', type: 'image/jpeg' },
+                    { src: data.icon, sizes: '384x384', type: 'image/jpeg' },
+                    { src: data.icon, sizes: '512x512', type: 'image/jpeg' }
+                ]
+            });
+        }
     }
 
     function togglePlay() {
@@ -234,6 +252,20 @@
         const m = Math.floor(s / 60);
         const sc = Math.floor(s % 60);
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
+    }
+
+    // --- ロック画面やバックグラウンドでの操作を受け付けるイベント ---
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => {
+            audio.play();
+            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+            audio.pause();
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => { prevSong(); });
+        navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
     }
 
     // 初期化実行
