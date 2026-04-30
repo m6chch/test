@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>M Music</title>
+    <!-- サイトのアイコン（ファビコン）の設定 -->
+    <link rel="icon" href="椎名真昼.jpg" type="image/jpeg">
+    <link rel="apple-touch-icon" href="椎名真昼.jpg">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -127,7 +131,8 @@
     </div>
 </div>
 
-<audio id="audio"></audio>
+<!-- preload="auto" を追加して読み込みの遅延を防ぐ -->
+<audio id="audio" preload="auto"></audio>
 
 <script>
     const audio = document.getElementById('audio');
@@ -194,7 +199,7 @@
                 li.onclick = () => {
                     currentIdx = songKeys.indexOf(key); // 元のリストから何番目か探す
                     loadSong(currentIdx);
-                    audio.play();
+                    safePlay(); // 固まらない再生処理を呼び出す
                     playBtn.innerHTML = '<i class="fas fa-pause"></i>';
                     searchResults.style.display = 'none'; // リストを閉じる
                     searchInput.value = ''; // バーをリセット
@@ -235,7 +240,7 @@
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: titleKey,
                 artist: artistName,
-                album: 'Ultimate Music Player',
+                album: 'M Music',
                 artwork: [
                     { src: data.icon, sizes: '96x96', type: 'image/jpeg' },
                     { src: data.icon, sizes: '128x128', type: 'image/jpeg' },
@@ -248,10 +253,23 @@
         }
     }
 
+    // ★ 固まらないように非同期で再生する関数
+    function safePlay() {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(_ => {
+                // 再生開始成功
+            }).catch(error => {
+                // 自動再生がブロックされた場合などのエラー処理
+                console.log("Playback prevented:", error);
+            });
+        }
+    }
+
     function togglePlay() {
         if (audio.src) {
             if (audio.paused) {
-                audio.play();
+                safePlay();
                 playBtn.innerHTML = '<i class="fas fa-pause"></i>';
             } else {
                 audio.pause();
@@ -274,7 +292,7 @@
     function nextSong() {
         if (isRepeat) {
             audio.currentTime = 0;
-            audio.play();
+            safePlay();
             return;
         }
 
@@ -284,20 +302,20 @@
             currentIdx = (currentIdx + 1) % songKeys.length;
         }
         loadSong(currentIdx);
-        audio.play();
+        safePlay();
         playBtn.innerHTML = '<i class="fas fa-pause"></i>';
     }
 
     function prevSong() {
         if (isRepeat) {
             audio.currentTime = 0;
-            audio.play();
+            safePlay();
             return;
         }
 
         currentIdx = (currentIdx - 1 + songKeys.length) % songKeys.length;
         loadSong(currentIdx);
-        audio.play();
+        safePlay();
         playBtn.innerHTML = '<i class="fas fa-pause"></i>';
     }
 
@@ -327,7 +345,7 @@
     audio.onended = () => {
         if (isRepeat) {
             audio.currentTime = 0;
-            audio.play();
+            safePlay();
         } else {
             nextSong();
         }
@@ -342,7 +360,7 @@
 
     if ('mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => {
-            audio.play();
+            safePlay();
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         });
         navigator.mediaSession.setActionHandler('pause', () => {
