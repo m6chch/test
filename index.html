@@ -23,14 +23,38 @@
 
         .player-container {
             width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column;
-            padding: 20px; background: linear-gradient(180deg, #2a2a2a 0%, #121212 100%);
+            padding: 15px 20px 20px; background: linear-gradient(180deg, #2a2a2a 0%, #121212 100%);
         }
 
-        .header { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
+        /* 検索バーのデザイン */
+        .search-container { position: relative; width: 100%; margin-bottom: 15px; z-index: 100; }
+        .search-bar { 
+            width: 100%; padding: 12px 15px 12px 40px; border-radius: 20px; border: none; 
+            background: rgba(0,0,0,0.4); color: #fff; font-size: 14px; outline: none; 
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .search-bar::placeholder { color: #888; }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-sub); }
+        .search-results { 
+            position: absolute; top: 100%; left: 0; width: 100%; background: var(--card-bg); 
+            border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); margin-top: 5px; 
+            max-height: 250px; overflow-y: auto; display: none; padding: 0; list-style: none; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .search-results li { 
+            padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; 
+            display: flex; align-items: center; gap: 12px; transition: 0.2s;
+        }
+        .search-results li:hover { background: rgba(255,255,255,0.1); }
+        .search-results img { width: 40px; height: 40px; border-radius: 5px; object-fit: cover; }
+        .search-info { display: flex; flex-direction: column; }
+        .search-title { font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        .search-artist { font-size: 11px; color: var(--accent); }
+
+        .header { display: flex; flex-direction: column; align-items: center; }
         .cover-box {
-            width: 60vw; height: 60vw; max-width: 230px; max-height: 230px;
+            width: 55vw; height: 55vw; max-width: 200px; max-height: 200px;
             border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1);
         }
         .cover-box img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -63,6 +87,13 @@
 <body>
 
 <div class="player-container">
+    <!-- 検索バー領域 -->
+    <div class="search-container">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" id="search-input" class="search-bar" placeholder="曲名やアーティストで検索...">
+        <ul id="search-results" class="search-results"></ul>
+    </div>
+
     <div class="header">
         <div class="cover-box">
             <img id="cover" src="" alt="jacket">
@@ -103,8 +134,12 @@
     const playBtn = document.getElementById('play');
     const seekBar = document.getElementById('seek');
     
-    let lyricsData = {}; // JSONから取得する全データ
-    let songKeys = [];   // 曲名のリスト（JSONのキー）
+    // 検索用エレメント
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    
+    let lyricsData = {}; 
+    let songKeys = [];   
     let currentIdx = 0;
     let isShuffle = false;
     let isRepeat = false;
@@ -115,7 +150,7 @@
         try {
             const response = await fetch('lyrics_data.json');
             lyricsData = await response.json();
-            songKeys = Object.keys(lyricsData); // JSONのキーを自動取得
+            songKeys = Object.keys(lyricsData); 
             
             if (songKeys.length > 0) {
                 loadSong(0);
@@ -124,6 +159,61 @@
             document.getElementById('lyrics-display').innerText = "lyrics_data.json の読み込みに失敗しました。";
         }
     }
+
+    // 検索機能の処理
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        searchResults.innerHTML = '';
+        
+        if (query === '') {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        // タイトルまたはアーティスト名で絞り込み
+        const matches = songKeys.filter(key => {
+            const data = lyricsData[key];
+            const titleMatch = key.toLowerCase().includes(query);
+            const artistMatch = (data.artist || "").toLowerCase().includes(query);
+            return titleMatch || artistMatch;
+        });
+
+        if (matches.length > 0) {
+            matches.forEach(key => {
+                const data = lyricsData[key];
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${data.icon}" alt="icon">
+                    <div class="search-info">
+                        <span class="search-title">${key}</span>
+                        <span class="search-artist">${data.artist || 'Unknown Artist'}</span>
+                    </div>
+                `;
+                
+                // 検索結果をタップした時の処理
+                li.onclick = () => {
+                    currentIdx = songKeys.indexOf(key); // 元のリストから何番目か探す
+                    loadSong(currentIdx);
+                    audio.play();
+                    playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                    searchResults.style.display = 'none'; // リストを閉じる
+                    searchInput.value = ''; // バーをリセット
+                    searchInput.blur(); // キーボードを閉じる
+                };
+                searchResults.appendChild(li);
+            });
+            searchResults.style.display = 'block';
+        } else {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // 検索結果以外をタップしたらリストを閉じる
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-container')) {
+            searchResults.style.display = 'none';
+        }
+    });
 
     function loadSong(idx) {
         const titleKey = songKeys[idx];
@@ -135,13 +225,12 @@
         document.getElementById('cover').src = data.icon;
         document.getElementById('lyrics-display').innerHTML = data.text;
         
-        // 特殊文字 (# など) を考慮してエンコード
         const encodedPath = data.file.split('/').map(p => encodeURIComponent(p)).join('/');
         audio.src = encodedPath;
         
         document.getElementById('scroll-area').scrollTop = 0;
 
-        // --- Media Session API (ロック画面や通知領域への表示) ---
+        // Media Session API
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: titleKey,
@@ -171,10 +260,8 @@
         }
     }
 
-    // 重複しないシャッフル用のインデックス取得
     function getNextShuffleIdx() {
         if (shuffleQueue.length === 0) {
-            // 現在の曲以外のインデックスをリスト化してシャッフル
             shuffleQueue = songKeys.map((_, i) => i).filter(i => i !== currentIdx);
             for (let i = shuffleQueue.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -225,7 +312,6 @@
         document.getElementById('repeat').classList.toggle('active', isRepeat);
     }
 
-    // 再生時間の更新
     audio.ontimeupdate = () => {
         const p = (audio.currentTime / audio.duration) * 100;
         seekBar.value = p || 0;
@@ -254,7 +340,6 @@
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
-    // --- ロック画面やバックグラウンドでの操作を受け付けるイベント ---
     if ('mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => {
             audio.play();
@@ -268,7 +353,6 @@
         navigator.mediaSession.setActionHandler('nexttrack', () => { nextSong(); });
     }
 
-    // 初期化実行
     init();
 </script>
 
